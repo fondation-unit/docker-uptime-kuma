@@ -1,0 +1,83 @@
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:2
+    container_name: uptime-kuma
+    restart: always
+    ports:
+      - "3001:3001"
+    volumes:
+      - kuma_data:/app/data
+    environment:
+      - TZ=Europe/Paris
+      - UMASK=0022
+    networks:
+      - web
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 30s
+      retries: 3
+      start_period: 10s
+      timeout: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wordpress.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.wordpress.entrypoints=websecure"
+      - "traefik.http.routers.wordpress.tls.certresolver=myresolver"
+      - "traefik.http.services.wordpress.loadbalancer.server.port=80"
+      # Middlewares
+      - "traefik.http.routers.${APP_NAME}.middlewares=block-scan@docker,compres\
+        s@docker"
+      # Gzip compression
+      - "traefik.http.middlewares.compress.compress=true"
+      # Timeouts
+      - "traefik.http.serversTransports.${APP_NAME}-transport.forwardingTimeout\
+        s.dialTimeout=60s"
+      - "traefik.http.serversTransports.${APP_NAME}-transport.forwardingTimeout\
+        s.responseHeaderTimeout=300s"
+      - "traefik.http.serversTransports.${APP_NAME}-transport.forwardingTimeout\
+        s.idleConnTimeout=300s"
+
+  traefik:
+    image: traefik:v3.6
+    container_name: traefik
+    command:
+      - "--api.dashboard=false"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      # Resolver
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email=${TRAEFIK_ACME_EMAIL}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    labels:
+      # Security headers
+      - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains\
+        =true"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=t\
+        rue"
+      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
+      # Cache static assets
+      - "traefik.http.middlewares.cache-headers.headers.customresponseheaders.C\
+        ache-Control=public, max-age=31536000"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "./traefik/acme.json:/letsencrypt/acme.json"
+      - "./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro"
+    networks:
+      - web
+
+networks:
+  web:
+    driver: bridge
