@@ -78,6 +78,9 @@ services:
     networks:
       - web
 
+volumes:
+  kuma_data:
+
 networks:
   web:
     driver: bridge
