@@ -3,6 +3,9 @@ services:
     image: louislam/uptime-kuma:2
     container_name: uptime-kuma
     restart: always
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "3001:3001"
     volumes:
@@ -28,7 +31,7 @@ services:
       - "traefik.http.routers.${APP_NAME}.rule=Host(`${DOMAIN_NAME}`)"
       - "traefik.http.routers.${APP_NAME}.entrypoints=websecure"
       - "traefik.http.routers.${APP_NAME}.tls.certresolver=myresolver"
-      - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=80"
+      - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=3001"
       # Block scanners
       - "traefik.http.middlewares.block-scan.redirectregex.regex=^/(\\.git|\\.e\
         nv|\\.DS_Store|v2/_catalog|server-status|setup|console).*"
@@ -46,6 +49,31 @@ services:
         s.responseHeaderTimeout=300s"
       - "traefik.http.serversTransports.${APP_NAME}-transport.forwardingTimeout\
         s.idleConnTimeout=300s"
+
+  db:
+    image: mariadb:12.3
+    container_name: db
+    expose:
+      - "3306"
+    restart: always
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/my.cnf:/etc/mysql/my.cnf
+    command:
+      - "--character-set-server=utf8mb4"
+      - "--collation-server=utf8mb4_unicode_ci"
+      - "--innodb-read-only-compressed=OFF"
+    env_file: .env
+    environment:
+      - TZ=Europe/Paris
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-uroot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - backend
 
   traefik:
     image: traefik:v3.6
@@ -88,8 +116,11 @@ services:
       - web
 
 volumes:
+  db_data:
   kuma_data:
 
 networks:
+  backend:
+    internal: true
   web:
     driver: bridge
