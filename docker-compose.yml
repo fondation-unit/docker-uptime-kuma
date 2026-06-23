@@ -29,6 +29,7 @@ services:
         max-file: "3"
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=web"
       - "traefik.http.routers.${APP_NAME}.rule=Host(`${DOMAIN_NAME}`)"
       - "traefik.http.routers.${APP_NAME}.entrypoints=websecure"
       - "traefik.http.routers.${APP_NAME}.tls.certresolver=myresolver"
@@ -80,6 +81,7 @@ services:
     image: traefik:v3.6
     container_name: traefik
     command:
+      # - "--log.level=DEBUG"
       - "--api.dashboard=false"
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
