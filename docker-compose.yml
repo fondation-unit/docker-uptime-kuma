@@ -14,6 +14,7 @@ services:
       - TZ=Europe/Paris
       - UMASK=0022
     networks:
+      - backend
       - web
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001"]
