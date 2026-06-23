@@ -6,8 +6,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     volumes:
       - kuma_data:/app/data
     environment:
