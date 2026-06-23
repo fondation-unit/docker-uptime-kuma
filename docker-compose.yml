@@ -29,9 +29,14 @@ services:
       - "traefik.http.routers.${APP_NAME}.entrypoints=websecure"
       - "traefik.http.routers.${APP_NAME}.tls.certresolver=myresolver"
       - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=80"
+      # Block scanners
+      - "traefik.http.middlewares.block-scan.redirectregex.regex=^/(\\.git|\\.e\
+        nv|\\.DS_Store|v2/_catalog|server-status|setup|console).*"
+      - "traefik.http.middlewares.block-scan.redirectregex.replacement=/"
+      - "traefik.http.middlewares.block-scan.redirectregex.permanent=false"
       # Middlewares
       - "traefik.http.routers.${APP_NAME}.middlewares=block-scan@docker,compres\
-        s@docker"
+        s@docker,security-headers@file"
       # Gzip compression
       - "traefik.http.middlewares.compress.compress=true"
       # Timeouts
